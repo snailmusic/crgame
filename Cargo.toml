@@ -1,0 +1,19 @@
+[package]
+name = "crgame"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bevy = { version = "0.14.0" }
+leafwing-input-manager = "0.14.0"
+
+# Enable a small amount of optimization in the dev profile.
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."bevy"]
+features = ["dynamic_linking"]
+
+# Enable a large amount of optimization in the dev profile for dependencies.
+[profile.dev.package."*"]
+opt-level = 3
