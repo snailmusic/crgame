@@ -8,11 +8,15 @@ const KEY_LIST: [Actions;4] = [
     Actions::Key4
 ];
 
+const KEY_WIDTH: f32 = 64.;
+
+const SCROLL_SPEED: f32 = 100.;
+
 pub fn run() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugins(InputManagerPlugin::<Actions>::default())
-        .add_systems(Startup, setup)
+        .add_systems(Startup, (setup, add_notes).chain())
         .add_systems(Update, check_input)
         .run();
 }
@@ -23,6 +27,59 @@ enum Actions {
     Key2,
     Key3,
     Key4
+}
+
+impl Actions {
+    fn get_pos(&self) -> f32 {
+        match self {
+            Actions::Key1 => -KEY_WIDTH * 1.5,
+            Actions::Key2 => -KEY_WIDTH * 0.5,
+            Actions::Key3 => KEY_WIDTH * 0.5,
+            Actions::Key4 => KEY_WIDTH * 1.5,
+        }
+    }
+}
+
+#[derive(Component)]
+struct KeyUI;
+
+#[derive(Component)]
+struct NoteUI;
+
+
+#[derive(Bundle)]
+struct NoteBundle {
+    sprite_bundle: SpriteBundle,
+    note: NoteUI
+}
+
+impl NoteBundle {
+
+}
+
+#[derive(Bundle)]
+struct KeyBundle {
+    sprite_bundle: SpriteBundle,
+    action: Actions,
+    key: KeyUI
+}
+
+impl KeyBundle {
+    fn new(action: Actions, asset_server: &Res<AssetServer>) -> Self {
+        let texture = match action {
+            Actions::Key1 | Actions::Key4 => "Key_A.png",
+            Actions::Key2 | Actions::Key3 => "Key_B.png"
+        };
+        Self {
+            sprite_bundle: SpriteBundle {
+                texture: asset_server.load(texture),
+                transform: Transform { translation: Vec3 { x: action.get_pos(), y: -300., z: 0.0 }, ..default() },
+                ..default()
+            },
+            action: action,
+            key: KeyUI
+        }
+    }
 }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
@@ -38,41 +95,21 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands
         .spawn(InputManagerBundle::with_map(input_map));
 
-    commands.spawn((
-        SpriteBundle {
-            texture: asset_server.load("Key_A.png"),
-            transform: Transform { translation: Vec3 { x: -128., y: -200., z: 0.0 }, ..default() },
-            ..default()
-        },
-        Actions::Key1
-    ));
+    commands.spawn(KeyBundle::new(Actions::Key1, &asset_server));
+    commands.spawn(KeyBundle::new(Actions::Key2, &asset_server));
+    commands.spawn(KeyBundle::new(Actions::Key3, &asset_server));
+    commands.spawn(KeyBundle::new(Actions::Key4, &asset_server));
+}
 
-    commands.spawn((
-        SpriteBundle {
-            texture: asset_server.load("Key_B.png"),
-            transform: Transform { translation: Vec3 { x: -64., y: -200., z: 0.0 }, ..default() },
+fn add_notes(mut commands: Commands, asset_server: Res<AssetServer>) {
+    let notea_handle = asset_server.load("Note_A.png");
+    let noteb_handle: Handle<Image> = asset_server.load("Note_B.png");
+    commands.spawn(
+        SpriteBundle{
+            texture: notea_handle.clone(),
             ..default()
-        },
-        Actions::Key2
-    ));
-
-    commands.spawn((
-        SpriteBundle {
-            texture: asset_server.load("Key_B.png"),
-            transform: Transform { translation: Vec3 { x: 0., y: -200., z: 0.0 }, ..default() },
-            ..default()
-        },
-        Actions::Key3
-    ));
-
-    commands.spawn((
-        SpriteBundle {
-            texture: asset_server.load("Key_A.png"),
-            transform: Transform { translation: Vec3 { x: 64., y: -200., z: 0.0 }, ..default() },
-            ..default()
-        },
-        Actions::Key4
-    ));
+        }
+    );
 }
 
 fn check_input(
