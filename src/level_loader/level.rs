@@ -7,6 +7,7 @@ pub struct Level {
     pub title: String,
     pub artist:  String,
     pub creator: String,
+    pub filename: String,
     pub data: Box<[Note]>
 }
 

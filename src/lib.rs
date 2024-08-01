@@ -17,13 +17,16 @@ const KEY_POS: f32 = -300.;
 const KEY_WIDTH: f32 = 64.;
 const KEY_HEIGHT: f32 = 102.;
 
-const SCROLL_SPEED: f32 = 500.;
+const SCROLL_SPEED: f32 = 800.;
+
+const START_DELAY: f32 = 2.;
 
 pub fn run() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugins(InputManagerPlugin::<Actions>::default())
         .init_resource::<LevelState>()
+        .insert_resource(StartTimer(Timer::from_seconds(START_DELAY, TimerMode::Once)))
         .init_asset::<Level>()
         .init_asset_loader::<LevelLoader>()
         .add_systems(Startup, (setup, start_level_load).chain())
@@ -50,6 +53,9 @@ impl Actions {
     }
 }
 
+#[derive(Resource)]
+struct StartTimer(Timer);
+
 #[derive(Component)]
 struct KeyUI;
 
@@ -73,7 +79,7 @@ impl NoteBundle {
             Actions::Key1 | Actions::Key4 => "Note_A.png",
             Actions::Key2 | Actions::Key3 => "Note_B.png"
         };
-        let time = time + 1000;
+        let time = time + (START_DELAY * 1000.) as u32;
         let y_pos = time_to_pos(time);
         Self {
             sprite_bundle: SpriteBundle {
@@ -116,7 +122,7 @@ impl KeyBundle {
 #[derive(Resource,Default)]
 struct LevelState {
     level_handle: Handle<Level>,
-    loaded: bool
+    songname: Option<String>,
 }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
@@ -167,9 +173,24 @@ fn load_level(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut level_state: ResMut<LevelState>,
-    level_assets: Res<Assets<Level>>
+    level_assets: Res<Assets<Level>>,
+    mut timer: ResMut<StartTimer>,
+    time: Res<Time>,
 ) {
-    if level_state.loaded {
+
+    if !level_state.songname.is_none() {
+        timer.0.tick(time.delta());
+
+        if !timer.0.finished() {
+            info!("timer prog: {}", timer.0.elapsed_secs());
+        }
+
+        if timer.0.just_finished() {
+            commands.spawn(AudioBundle {
+                source: asset_server.load(&("levels/".to_string() + &level_state.songname.clone().unwrap())),
+                settings: PlaybackSettings::DESPAWN
+            });
+        }
         return;
     }
 
@@ -180,8 +201,21 @@ fn load_level(
         return;
     }
 
-    info!("Loaded {:?}", level_asset.unwrap());
-    level_state.loaded = true;
+    let level_asset = level_asset.unwrap();
+
+    info!("Loaded {:?} in {:?}s", level_asset, time.elapsed_seconds());
+
+    
+    for (note) in level_asset.data.iter() {
+        match note {
+            level_loader::level::Note::S(action, time) => {
+                commands.spawn(NoteBundle::new(*action, &asset_server, *time));
+            },
+            level_loader::level::Note::L(_, _, _) => todo!(),
+        }
+    }
+
+    level_state.songname = Some(level_asset.filename.clone());
 }
 
 fn update_notes(
