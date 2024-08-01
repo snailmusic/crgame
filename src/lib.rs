@@ -1,16 +1,10 @@
 mod level_loader;
 
-use bevy::{prelude::*};
+use bevy::prelude::*;
 use leafwing_input_manager::{plugin::InputManagerPlugin, prelude::*, Actionlike, InputManagerBundle};
 use level_loader::{level::Level, LevelLoader};
 use serde::{Deserialize, Serialize};
 
-const KEY_LIST: [Actions;4] = [
-    Actions::Key1,
-    Actions::Key2,
-    Actions::Key3,
-    Actions::Key4
-];
 
 const KEY_POS: f32 = -300.;
 
@@ -181,10 +175,6 @@ fn load_level(
     if !level_state.songname.is_none() {
         timer.0.tick(time.delta());
 
-        if !timer.0.finished() {
-            info!("timer prog: {}", timer.0.elapsed_secs());
-        }
-
         if timer.0.just_finished() {
             commands.spawn(AudioBundle {
                 source: asset_server.load(&("levels/".to_string() + &level_state.songname.clone().unwrap())),
@@ -206,7 +196,7 @@ fn load_level(
     info!("Loaded {:?} in {:?}s", level_asset, time.elapsed_seconds());
 
     
-    for (note) in level_asset.data.iter() {
+    for note in level_asset.data.iter() {
         match note {
             level_loader::level::Note::S(action, time) => {
                 commands.spawn(NoteBundle::new(*action, &asset_server, *time));
